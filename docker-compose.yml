@@ -7,7 +7,9 @@ services:
       - "8000:8000"
     environment:
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - YOUTUBE_API_KEY=${YOUTUBE_API_KEY}
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - API_BASE_URL=${API_BASE_URL}
     volumes:
       - ./backend:/app
     depends_on:
@@ -24,6 +26,25 @@ services:
             - "*.pyc"
         - action: rebuild
           path: backend/requirements.txt
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        - API_BASE_URL=${API_BASE_URL}
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    develop:
+      watch:
+        - action: sync+restart
+          path: ./frontend/src
+          target: /app/src
+        - action: rebuild
+          path: frontend/package.json
 
   zookeeper:
     image: confluentinc/cp-zookeeper:latest

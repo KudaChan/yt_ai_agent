@@ -27,9 +27,9 @@ var/
 *.egg
 
 # Environment variables
+!.env
 .env
 .env.*
-!.env.example
 
 # IDE
 .idea/
@@ -60,3 +60,26 @@ LICENSE
 .DS_Store
 *.tmp
 *.bak
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.next/
+frontend/.nuxt/
+frontend/.output/
+frontend/.vercel/
+frontend/.vscode/
+frontend/.idea/
+frontend/.gitignore
+frontend/.env
+frontend/.env.*
+frontend/!.env.example
+frontend/README.md
+frontend/LICENSE
+frontend/docs/
+frontend/tests/
+frontend/pytest_cache/
+frontend/.coverage
+frontend/htmlcov/
+frontend/.dockerignore
+frontend/docker-compose*.yml
