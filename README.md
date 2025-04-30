@@ -92,22 +92,6 @@ video-summarizer/
 └── .env                    # Environment variables
 ```
 
-## 🧪 Testing
-
-### Backend Tests
-
-```bash
-cd backend
-pytest
-```
-
-### Frontend Tests
-
-```bash
-cd frontend
-npm test
-```
-
 ## 📚 API Documentation
 
 When the backend is running, API documentation is available at:
