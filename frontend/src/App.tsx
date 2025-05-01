@@ -17,10 +17,12 @@ function App() {
     const checkStatus = async () => {
       try {
         const statusData = await getSummaryStatus(jobId)
-        
+
         if (statusData.status === 'completed') {
           const resultData = await getSummaryResult(jobId)
-          setSummaryData(resultData as any)
+          setSummaryData(resultData)
+
+          setError(null)
           setIsLoading(false)
           setJobId(null)
         } else if (statusData.status === 'failed') {
@@ -63,6 +65,15 @@ function App() {
     <Layout>
       <div className="flex flex-col items-center space-y-4 sm:space-y-6 max-w-6xl mx-auto">
         <SummaryForm onSubmit={handleSubmit} isLoading={isLoading} />
+        
+        {isLoading && (
+          <div className="w-full bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-700">
+            <div className="flex flex-col items-center">
+              <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+          </div>
+        )}
+        
         <SummaryResult 
           data={summaryData} 
           isLoading={isLoading} 

@@ -105,6 +105,7 @@ async def get_job_results(job_id: str):
         "title": job_data.get("title", ""),
         "channel": job_data.get("channel", ""),
         "summary": job_data.get("summary", ""),
+        "error": job_data.get("error", ""),
         "key_points": job_data.get("key_points", []),
         "validation_result": job_data.get("validation_result", {}),
         "timestamp": job_data.get("timestamp", "")

@@ -13,43 +13,66 @@ export interface SummaryResponse {
 export interface SummaryResult {
   title: string;
   summary: string;
+  error?: string;
   key_points: string[];
   thumbnail_url?: string;
 }
 
 export async function submitSummaryRequest(request: SummaryRequest): Promise<SummaryResponse> {
-  const response = await fetch(`${API_BASE_URL}/summarize`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(request),
-  });
+  try {
+    const response = await fetch(`${API_BASE_URL}/summarize`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    });
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.detail || 'Failed to submit summary request');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || `Failed to submit summary request: ${response.status}`);
+    }
+
+    return response.json();
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('Network error when submitting request');
   }
-
-  return response.json();
 }
 
 export async function getSummaryStatus(jobId: string): Promise<SummaryResponse> {
-  const response = await fetch(`${API_BASE_URL}/status/${jobId}`);
+  try {
+    const response = await fetch(`${API_BASE_URL}/status/${jobId}`);
 
-  if (!response.ok) {
-    throw new Error('Failed to get summary status');
+    if (!response.ok) {
+      throw new Error(`Failed to get summary status: ${response.status}`);
+    }
+
+    return response.json();
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('Network error when checking status');
   }
-
-  return response.json();
 }
 
 export async function getSummaryResult(jobId: string): Promise<SummaryResult> {
-  const response = await fetch(`${API_BASE_URL}/results/${jobId}`);
+  try {
+    // Fix the endpoint URL - change from "result" to "results"
+    const response = await fetch(`${API_BASE_URL}/results/${jobId}`);
 
-  if (!response.ok) {
-    throw new Error('Failed to get summary results');
+    if (!response.ok) {
+      throw new Error(`Failed to get summary result: ${response.status}`);
+    }
+
+    return response.json();
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('Network error when fetching result');
   }
-
-  return response.json();
 }

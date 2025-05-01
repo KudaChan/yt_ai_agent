@@ -47,7 +47,13 @@ class TranscriptionAgent(BaseAgent):
             video_id = self.extract_video_id(video_url)
             logger.debug(f"Extracted video ID: {video_id}")
             if not video_id:
-                raise ValueError(f"Invalid YouTube URL: {video_url}")
+                return {
+                    "job_id": job_id,
+                    "video_id": None,
+                    "video_url": video_url,
+                    "error": f"Invalid YouTube URL: {video_url}",
+                    "status": "failed"
+                }
             
             # Get video details
             logger.debug(f"Getting video details for {video_id}")
@@ -55,8 +61,20 @@ class TranscriptionAgent(BaseAgent):
             
             # Get transcript
             logger.debug(f"Getting transcript for {video_id}")
-            transcript = self.get_transcript(video_id, language)
-            logger.debug(f"Transcript length: {len(transcript)}")
+            try:
+                transcript = self.get_transcript(video_id, language)
+                logger.debug(f"Transcript length: {len(transcript)}")
+            except ValueError as e:
+                # Handle transcript errors specifically
+                return {
+                    "job_id": job_id,
+                    "video_id": video_id,
+                    "video_url": video_url,
+                    "title": video_details.get("title", ""),
+                    "channel": video_details.get("channel", ""),
+                    "error": str(e),
+                    "status": "failed"
+                }
             
             result = {
                 "job_id": job_id,
@@ -72,7 +90,13 @@ class TranscriptionAgent(BaseAgent):
             return result
         except Exception as e:
             logger.error(f"Error processing video {video_url}: {str(e)}", exc_info=True)
-            raise
+            # Return a failure response instead of re-raising
+            return {
+                "job_id": job_id,
+                "video_url": video_url,
+                "error": f"Processing error: {str(e)}",
+                "status": "failed"
+            }
     
     def extract_video_id(self, url: str) -> str:
         """Extract YouTube video ID from URL"""
@@ -133,3 +157,55 @@ class TranscriptionAgent(BaseAgent):
         except Exception as e:
             logger.error(f"Error getting transcript: {str(e)}")
             raise ValueError(f"Could not retrieve transcript: {str(e)}")
+    
+    async def process_message(self, message: Dict[str, Any]):
+        job_id = message.get("job_id")
+        
+        if not job_id:
+            logger.error(f"{self.name} received message without job_id")
+            return
+        
+        logger.info(f"{self.name} processing job {job_id}")
+        
+        try:
+            result = await self.process(message)
+            if "job_id" not in result:
+                result["job_id"] = job_id
+            
+            # Check if the result indicates a failure
+            if result.get("status") == "failed":
+                # Add completed status for the frontend to recognize it's done
+                result["status"] = "completed"
+                
+                # Send directly to the final VALIDATED_SUMMARIES topic
+                from app.kafka import VALIDATED_SUMMARIES
+                await self.kafka_manager.send_message(
+                    topic=VALIDATED_SUMMARIES,
+                    message=result,
+                    key=job_id
+                )
+                logger.info(f"{self.name} sent error for job {job_id} directly to final topic")
+            else:
+                # Normal processing - send to regular output topic
+                await self.kafka_manager.send_message(
+                    topic=self.output_topic,
+                    message=result,
+                    key=job_id
+                )
+                logger.info(f"{self.name} completed job {job_id}")
+        except Exception as e:
+            logger.error(f"{self.name} failed to process job {job_id}: {str(e)}")
+            error_message = {
+                "job_id": job_id,
+                "agent": self.name,
+                "error": str(e),
+                "original_message": message,
+                "video_url": message.get("video_url", ""),
+                "status": "completed"  # Mark as completed for frontend
+            }
+            from app.kafka import VALIDATED_SUMMARIES
+            await self.kafka_manager.send_message(
+                topic=VALIDATED_SUMMARIES,
+                message=error_message,
+                key=job_id
+            )

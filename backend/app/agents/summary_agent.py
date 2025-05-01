@@ -77,4 +77,56 @@ class SummaryAgent(BaseAgent):
         except Exception as e:
             logger.error(f"Error generating summary with Gemini API: {str(e)}")
             return f"Failed to generate summary: {str(e)}"
+    
+    async def process_message(self, message: Dict[str, Any]):
+        job_id = message.get("job_id")
+        
+        if not job_id:
+            logger.error(f"{self.name} received message without job_id")
+            return
+        
+        logger.info(f"{self.name} processing job {job_id}")
+        
+        try:
+            result = await self.process(message)
+            if "job_id" not in result:
+                result["job_id"] = job_id
+            
+            # Check if the result indicates a failure
+            if result.get("status") == "failed":
+                # Add completed status for the frontend to recognize it's done
+                result["status"] = "completed"
+                
+                # Send directly to the final VALIDATED_SUMMARIES topic
+                from app.kafka import VALIDATED_SUMMARIES
+                await self.kafka_manager.send_message(
+                    topic=VALIDATED_SUMMARIES,
+                    message=result,
+                    key=job_id
+                )
+                logger.info(f"{self.name} sent error for job {job_id} directly to final topic")
+            else:
+                # Normal processing - send to regular output topic
+                await self.kafka_manager.send_message(
+                    topic=self.output_topic,
+                    message=result,
+                    key=job_id
+                )
+                logger.info(f"{self.name} completed job {job_id}")
+        except Exception as e:
+            logger.error(f"{self.name} failed to process job {job_id}: {str(e)}")
+            error_message = {
+                "job_id": job_id,
+                "agent": self.name,
+                "error": str(e),
+                "original_message": message,
+                "video_url": message.get("video_url", ""),
+                "status": "completed"  # Mark as completed for frontend
+            }
+            from app.kafka import VALIDATED_SUMMARIES
+            await self.kafka_manager.send_message(
+                topic=VALIDATED_SUMMARIES,
+                message=error_message,
+                key=job_id
+            )
 

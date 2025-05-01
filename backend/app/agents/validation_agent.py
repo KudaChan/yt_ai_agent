@@ -2,6 +2,7 @@ import logging
 import os
 from typing import Dict, Any, List
 import google.generativeai as genai
+import asyncio
 
 from app.agents.base_agent import BaseAgent
 from app.kafka import SUMMARY_RESULTS, VALIDATED_SUMMARIES
@@ -87,7 +88,19 @@ class ValidationAgent(BaseAgent):
             """
             
             model = genai.GenerativeModel('gemini-2.0-flash')
-            response = model.generate_content(prompt)
+            
+            # Add timeout handling
+            try:
+                response = await asyncio.wait_for(
+                    asyncio.to_thread(model.generate_content, prompt),
+                    timeout=30.0  # 30 second timeout
+                )
+            except asyncio.TimeoutError:
+                logger.warning(f"Validation API call timed out for title: {title}")
+                return {
+                    "is_valid": True,  # Assume valid on timeout
+                    "issues": ["Validation timed out, proceeding with original summary"]
+                }
             
             # Parse validation result
             validation_text = response.text

@@ -12,7 +12,7 @@ export default function Layout({ children }: LayoutProps) {
           <h1 className="text-xl sm:text-2xl font-bold text-white">YouTube Summarizer</h1>
         </div>
       </header>
-      <main className="flex-1 overflow-hidden">
+      <main className="flex-1 overflow-y-auto">
         <div className="max-w-7xl mx-auto h-full px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
           {children}
         </div>
